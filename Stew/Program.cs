@@ -4,34 +4,24 @@ using System.Linq;
 
 namespace Stew
 {
-    internal class Program
+    class Program
     {
         static void Main()
         {
-            int stewQuantity = 10;
             int currentYear = 2024;
-            List<Stew> stews = new List<Stew>();
-            StewFabrik stewFabrik = new StewFabrik();
+            StewFactory stewFactory = new StewFactory();
 
-            for (int i = 0; i < stewQuantity; i++)
-                stews.Add(stewFabrik.CreateStew());
+            List<Stew> stews = stewFactory.Create();
+            List<Stew> expiredStew = stews.Where(stew => stew.ProductionYear + stew.ExpirationDate < currentYear).ToList();
 
-            IEnumerable<Stew> expiredStew = stews.Where(stew => stew.ProductionYear + stew.ShelfLife <= currentYear);
-
-            WriteStewsStats(stews, "Вся тушенка:");
-
-            WriteStewsStats(expiredStew, "Просроченная тушенка:");
+            WriteStewsInfo(stews, "Вся тушенка:");
+            WriteStewsInfo(expiredStew, "Просроченная тушенка:");
         }
 
-        static void WriteStewsStats(IEnumerable<Stew> stews, string text)
+        private static void WriteStewsInfo(List<Stew> stews, string text)
         {
-            Console.WriteLine(text);
-
-            foreach (Stew stew in stews)
-                Console.WriteLine($"Тушенка {stew.Name} произведена в {stew.ProductionYear} году." +
-                    $" срок годности в годах: {stew.ShelfLife}.");
-
-            Console.WriteLine();
+            Console.WriteLine("\n" + text);
+            stews.ForEach(stew => stew.WriteInfo());
         }
     }
 
@@ -41,35 +31,70 @@ namespace Stew
         {
             Name = name;
             ProductionYear = productionYear;
-            ShelfLife = expirationDate;
+            ExpirationDate = expirationDate;
         }
 
-        public string Name { get; private set; }
-        public int ProductionYear { get; private set; }
-        public int ShelfLife { get; private set; }
+        public string Name { get; }
+        public int ProductionYear { get; }
+        public int ExpirationDate { get; }
+
+        public void WriteInfo()
+        {
+            const int ShortOffset = -5;
+            const int LongOffset = -10;
+
+            Console.WriteLine($"{Name,LongOffset} Год производства: {ProductionYear,ShortOffset} " +
+                $"Срок годности: {ExpirationDate,ShortOffset}");
+        }
     }
 
-    class StewFabrik
+    class StewFactory
     {
-        private List<string> _names;
-        private int[] _productionYearsStats = { 2017, 2022 };
-        private int[] _shelfLivesYearsStats = { 2, 10 };
-
-        Random _random = new Random();
-
-        public StewFabrik() =>
-            FillNames();
-
-        public Stew CreateStew()
+        public List<Stew> Create()
         {
-            string name = _names[_random.Next(_names.Count)];
-            int productionYear = _random.Next(_productionYearsStats[0], _productionYearsStats[1]);
-            int shelfLifeYears = _random.Next(_shelfLivesYearsStats[0], _shelfLivesYearsStats[1]);
+            int[] productionYearsStats = { 2016, 2020 };
+            int[] expirationDateStats = { 3, 8 };
 
-            return new Stew(name, productionYear, shelfLifeYears);
+            int stewsQuantity = 10;
+            List<Stew> stews = new List<Stew>();
+
+            for (int i = 0; i < stewsQuantity; i++)
+            {
+                string name = UserUtils.PickRandomValue(GetNames());
+                int productionYear = UserUtils.GenerateStat(productionYearsStats);
+                int expirationDate = UserUtils.GenerateStat(expirationDateStats);
+
+                stews.Add(new Stew(name, productionYear, expirationDate));
+            }
+
+            return stews;
         }
 
-        private void FillNames() =>
-            _names = new List<string>() { "Гродфуд", "Барс", "Совок", "Вкусвилл", "Микоян" };
+        private List<string> GetNames() =>
+            new List<string>() { "Гродфуд", "Барс", "Совок", "Вкусвилл", "Микоян" };
+    }
+
+    static class UserUtils
+    {
+        private static Random s_random = new Random();
+
+        public static T PickRandomValue<T>(IEnumerable<T> values)
+        {
+            int index = s_random.Next(values.Count());
+
+            return values.ElementAt(index);
+        }
+
+        public static int GenerateStat(int[] stats)
+        {
+            int maxLength = 2;
+
+            if (stats.Length != maxLength)
+            {
+                throw new ArgumentException("Массив stats должен содержать ровно 2 элемента.");
+            }
+
+            return s_random.Next(stats[0], stats[1] + 1);
+        }
     }
 }
